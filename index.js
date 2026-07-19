@@ -5,26 +5,31 @@ const TOKENS = [
   process.env.TOKEN_1, process.env.TOKEN_2, process.env.TOKEN_3,
   process.env.TOKEN_4, process.env.TOKEN_5, process.env.TOKEN_6,
   process.env.TOKEN_7
-].filter(t => t && t.trim() !== ''); // Filter out empty tokens
+].filter(t => t && t.trim() !== '');
 
 const GUILD_ID = "1289988589052104846";
 const CHANNEL_ID = "1343599197856727061";
 
-const connections = new Map();
-
 async function startAccount(token, index) {
-  const client = new Client({ checkUpdate: false });
+  const client = new Client({ 
+    checkUpdate: false,
+    // Add proxy support if you have one
+    // httpProxy: process.env.PROXY 
+  });
 
   client.on('ready', async () => {
-    console.log(`[${index + 1}/7] ${client.user.tag} is online!`);
+    console.log(`[${index + 1}/7] ${client.user.tag} logged in`);
     
-    // Wait between joins to avoid rate limits (3-5 seconds between each)
-    await new Promise(r => setTimeout(r, index * 4000));
+    // MUCH longer delay for cloud hosting (15-30 seconds between joins)
+    const delay = (index * 25000) + (Math.random() * 10000);
+    console.log(`[${index + 1}] Waiting ${Math.round(delay/1000)}s before joining VC...`);
+    await new Promise(r => setTimeout(r, delay));
+    
     await joinVC(client, index);
   });
 
   client.on('error', (err) => {
-    console.error(`[${index + 1}] Client error:`, err.message);
+    console.error(`[${index + 1}] Error:`, err.message);
   });
 
   try {
@@ -38,17 +43,9 @@ async function joinVC(client, index) {
   try {
     const guild = client.guilds.cache.get(GUILD_ID);
     if (!guild) {
-      console.error(`[${index + 1}] Guild not found - is the account in the server?`);
+      console.error(`[${index + 1}] Not in guild`);
       return;
     }
-
-    const channel = guild.channels.cache.get(CHANNEL_ID);
-    if (!channel) {
-      console.error(`[${index + 1}] Voice channel not found`);
-      return;
-    }
-
-    console.log(`[${index + 1}] Joining voice channel...`);
 
     const connection = joinVoiceChannel({
       channelId: CHANNEL_ID,
@@ -58,48 +55,22 @@ async function joinVC(client, index) {
       selfDeaf: true
     });
 
-    // Wait for connection to be ready
-    try {
-      await entersState(connection, VoiceConnectionStatus.Ready, 30_000);
-      console.log(`[${index + 1}] Successfully joined voice channel!`);
-    } catch (err) {
-      console.error(`[${index + 1}] Failed to connect:`, err.message);
-      connection.destroy();
-      return;
-    }
+    await entersState(connection, VoiceConnectionStatus.Ready, 30_000);
+    console.log(`[${index + 1}] JOINED VC ✓`);
 
-    // Keep connection alive
     connection.on(VoiceConnectionStatus.Disconnected, async () => {
-      console.log(`[${index + 1}] Disconnected, attempting reconnect...`);
-      try {
-        await entersState(connection, VoiceConnectionStatus.Ready, 30_000);
-      } catch {
-        connection.destroy();
-        // Rejoin after 5 seconds
-        setTimeout(() => joinVC(client, index), 5000);
-      }
+      console.log(`[${index + 1}] Disconnected, reconnecting...`);
+      setTimeout(() => joinVC(client, index), 10000);
     });
-
-    connection.on(VoiceConnectionStatus.Destroyed, () => {
-      console.log(`[${index + 1}] Connection destroyed, will rejoin...`);
-      setTimeout(() => joinVC(client, index), 5000);
-    });
-
-    connections.set(index, connection);
 
   } catch (error) {
-    console.error(`[${index + 1}] Error joining voice:`, error.message);
-    // Retry after 10 seconds
-    setTimeout(() => joinVC(client, index), 10000);
+    console.error(`[${index + 1}] Failed to join:`, error.message);
+    // Retry with backoff
+    setTimeout(() => joinVC(client, index), 30000);
   }
 }
 
-// Start all accounts with staggered delays
-console.log(`Starting ${TOKENS.length} accounts...`);
+// Start with longer staggered delays
 TOKENS.forEach((token, index) => {
-  // Stagger initial logins too
-  setTimeout(() => startAccount(token, index), index * 2000);
+  setTimeout(() => startAccount(token, index), index * 5000);
 });
-
-// Keep script alive
-setInterval(() => {}, 1000);
