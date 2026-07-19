@@ -1,7 +1,21 @@
+// --- DISCORD API BREAKING CHANGE HOTFIX ---
+try {
+  const ClientUserSettingManager = require('discord.js-selfbot-v13/src/managers/ClientUserSettingManager');
+  const originalPatch = ClientUserSettingManager.prototype._patch;
+  ClientUserSettingManager.prototype._patch = function (data) {
+    if (data && !data.friend_source_flags) {
+      data.friend_source_flags = { all: false, mutual_friends: false, mutual_guilds: false };
+    }
+    return originalPatch.call(this, data);
+  };
+} catch (err) {
+  console.log("Hotfix injection skipped or unneeded.");
+}
+// ------------------------------------------
+
 const { Client } = require('discord.js-selfbot-v13');
 const { joinVoiceChannel } = require('@discordjs/voice');
 
-// Railway will securely inject these variables later
 const TOKENS = [
   process.env.TOKEN_1, process.env.TOKEN_2, process.env.TOKEN_3,
   process.env.TOKEN_4, process.env.TOKEN_5, process.env.TOKEN_6,
@@ -11,10 +25,7 @@ const GUILD_ID = "1289988589052104846";
 const CHANNEL_ID = "1343599197856727061";
 
 TOKENS.forEach((token, index) => {
-  if (!token) {
-    console.log(`Skipping slot ${index + 1}: No token provided in environment variables.`);
-    return;
-  }
+  if (!token) return;
 
   const client = new Client({ checkUpdate: false });
 
@@ -27,8 +38,8 @@ TOKENS.forEach((token, index) => {
         channelId: CHANNEL_ID,
         guildId: GUILD_ID,
         adapterCreator: guild.voiceAdapterCreator,
-        selfMute: true,  // Keeps your mic muted
-        selfDeaf: true   // Deafens you to save Railway bandwidth
+        selfMute: true,
+        selfDeaf: true
       });
       console.log(`Account ${index + 1} successfully joined the voice channel.`);
     } catch (error) {
@@ -37,6 +48,6 @@ TOKENS.forEach((token, index) => {
   });
 
   client.login(token).catch(err => {
-    console.error(`Account ${index + 1} failed login: Status code or token might be flagged.`);
+    console.error(`Account ${index + 1} failed login: Token might be invalid or flagged.`);
   });
 });
