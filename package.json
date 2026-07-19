@@ -9,6 +9,7 @@
     "discord.js-selfbot-v13": "^3.7.1",
     "@discordjs/voice": "^0.17.0",
     "libsodium-wrappers": "^0.7.15",
-    "opusscript": "^0.1.1"
+    "opusscript": "^0.1.1",
+    "debug": "^4.3.4"
   }
 }
